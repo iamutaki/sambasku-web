@@ -1,4 +1,4 @@
-import type { WordDetail } from '@/domain/entities/word.entity';
+import type { WordDetail, WordSummary } from '@/domain/entities/word.entity';
 import { pickSafePrimaryImageUrl } from '@/domain/image-content-warnings';
 import { env } from '@/infrastructure/config/env';
 import { getFixedT } from '@/application/i18n/i18n-instance';
@@ -10,6 +10,10 @@ import {
   localePath,
   seoLocales,
 } from '@/application/i18n/locales';
+import {
+  lemmaAltFromLocalizedPath,
+  resolveOgImageSize,
+} from './og-image-meta.ts';
 
 export interface SeoMetaProps {
   title: string;
@@ -17,6 +21,18 @@ export interface SeoMetaProps {
   /** Path sudah ber-prefix locale, mis. `/id/words/somet` */
   path?: string;
   image?: string;
+  /**
+   * Alt `og:image` / `twitter:image:alt`.
+   * Kosong: lemma bila path halaman kata, selain itu judul halaman.
+   */
+  imageAlt?: string;
+  /**
+   * Ukuran piksel yang pasti. Kalau kosong, kartu `/og/words/` diumumkan
+   * 1200x630 dan fallback logo 512x512. Foto yang hanya di-resize lebarnya
+   * tidak dapat angka tinggi - unfurler mengukur sendiri daripada salah crop.
+   */
+  imageWidth?: number;
+  imageHeight?: number;
   type?: 'website' | 'article';
   locale?: AppLocale | string;
   /**
@@ -79,6 +95,9 @@ export function buildMetaTags({
   description,
   path = '',
   image,
+  imageAlt,
+  imageWidth,
+  imageHeight,
   type = 'website',
   locale: localeInput,
   noindexAlways = false,
@@ -91,6 +110,9 @@ export function buildMetaTags({
   const siteName = env.appName;
   const fullTitle = title.includes(siteName) ? title : `${title} | ${siteName}`;
   const finalImage = image ?? `${env.appUrl}/logo.png`;
+  const imageAltText =
+    imageAlt?.trim() || lemmaAltFromLocalizedPath(normalizedPath) || fullTitle;
+  const ogSize = resolveOgImageSize(image, finalImage, imageWidth, imageHeight);
   const noindex = noindexAlways || !env.isProd;
   const twitterCard = image ? 'summary_large_image' : 'summary';
 
@@ -118,10 +140,18 @@ export function buildMetaTags({
     ...ogAlternates,
     { property: 'og:type', content: type },
     { property: 'og:image', content: finalImage },
+    ...(ogSize
+      ? [
+          { property: 'og:image:width', content: String(ogSize.width) },
+          { property: 'og:image:height', content: String(ogSize.height) },
+        ]
+      : []),
+    { property: 'og:image:alt', content: imageAltText },
     { name: 'twitter:card', content: twitterCard },
     { name: 'twitter:title', content: fullTitle },
     { name: 'twitter:description', content: description },
     { name: 'twitter:image', content: finalImage },
+    { name: 'twitter:image:alt', content: imageAltText },
   ];
 }
 
@@ -237,6 +267,70 @@ export function buildFaqJsonLd(localeInput?: string) {
         text: item.answer,
       },
     })),
+  };
+}
+
+/**
+ * JSON-LD halaman huruf `/{locale}/huruf/:letter`: CollectionPage (dengan
+ * ItemList dari halaman aktif) + BreadcrumbList, sejalan pola buildWordJsonLd.
+ */
+export function buildLetterJsonLd(
+  letter: string,
+  words: WordSummary[],
+  localeInput?: string,
+) {
+  const locale = resolveLocale(localeInput);
+  const t = getFixedT(locale);
+  const letterUrl = `${env.appUrl}${localePath(locale, `/huruf/${letter}`)}`;
+  const wordsIndexUrl = `${env.appUrl}${localePath(locale, '/words')}`;
+  const homeUrl = `${env.appUrl}${localePath(locale, '/')}`;
+
+  const collection = {
+    '@type': 'CollectionPage',
+    '@id': `${letterUrl}#collection`,
+    name: t('letter_heading', { letter: letter.toUpperCase() }),
+    url: letterUrl,
+    isPartOf: { '@id': `${homeUrl}#website` },
+    inLanguage: locale,
+    mainEntity: {
+      '@type': 'ItemList',
+      itemListElement: words.map((word, i) => ({
+        '@type': 'ListItem',
+        position: i + 1,
+        name: word.lemma,
+        url: `${env.appUrl}${localePath(locale, `/words/${encodeURIComponent(word.lemma)}`)}`,
+      })),
+    },
+  };
+
+  const breadcrumb = {
+    '@type': 'BreadcrumbList',
+    '@id': `${letterUrl}#breadcrumb`,
+    itemListElement: [
+      {
+        '@type': 'ListItem',
+        position: 1,
+        name: t('word_homeCrumb'),
+        item: homeUrl,
+      },
+      {
+        '@type': 'ListItem',
+        position: 2,
+        name: t('word_wordsCrumb'),
+        item: wordsIndexUrl,
+      },
+      {
+        '@type': 'ListItem',
+        position: 3,
+        name: t('letter_heading', { letter: letter.toUpperCase() }),
+        item: letterUrl,
+      },
+    ],
+  };
+
+  return {
+    '@context': 'https://schema.org',
+    '@graph': [collection, breadcrumb],
   };
 }
 

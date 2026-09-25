@@ -65,9 +65,11 @@ export function meta({ data, params }: Route.MetaArgs) {
   const { word } = data;
   const { title, description } = buildWordSeoCopy(word, locale);
   const rawImage = pickSafePrimaryImageUrl(word.images);
+  // Kartu OG dinamis saat tidak ada gambar kata yang aman (pengganti
+  // fallback logo.png dari buildMetaTags).
   const primaryImage = rawImage
     ? displayImageUrl(rawImage, { width: 1200 })
-    : undefined;
+    : `${env.appUrl}/og/words/${encodeURIComponent(word.lemma)}`;
 
   return buildMetaTags({
     title,
@@ -141,6 +143,20 @@ export default function WordDetailPage() {
   const jsonLd = buildWordJsonLd(word, locale);
 
   const handleShare = async () => {
+    // Web Share API (mobile): share sheet native. Fallback clipboard.
+    if (typeof navigator !== 'undefined' && navigator.share) {
+      try {
+        const { title: shareTitle } = buildWordSeoCopy(word, locale);
+        await navigator.share({
+          title: word.lemma,
+          text: shareTitle,
+          url: window.location.href,
+        });
+        return;
+      } catch {
+        // dibatalkan user atau gagal: lanjut fallback clipboard
+      }
+    }
     if (typeof navigator !== 'undefined' && navigator.clipboard) {
       await navigator.clipboard.writeText(window.location.href);
       setCopied(true);
@@ -191,7 +207,7 @@ export default function WordDetailPage() {
             size="compact-sm"
             leftSection={<ArrowLeft size={15} />}
           >
-            Kembali ke Daftar
+            {t('word_backToList')}
           </Button>
 
           <Button
@@ -201,7 +217,7 @@ export default function WordDetailPage() {
             leftSection={copied ? <Check size={15} /> : <Share2 size={15} />}
             color={copied ? 'teal' : undefined}
           >
-            {copied ? 'Tautan Disalin' : 'Bagikan'}
+            {copied ? t('word_shareCopied') : t('word_share')}
           </Button>
         </Group>
 
@@ -225,11 +241,11 @@ export default function WordDetailPage() {
             </Group>
             {/* Teks SSR untuk query "{lemma} bahasa sambas" - jangan client-only. */}
             <Text size="sm" c="dimmed">
-              Arti kata {word.lemma} dalam bahasa Sambas (Melayu Sambas).
+              {t('word_leadSentence', { lemma: word.lemma })}
             </Text>
             {!word.is_verified ? (
               <Text size="sm" c="dimmed">
-                Kata ini belum diperiksa tim Sambasku. Artinya atau terjemahannya bisa saja kurang tepat.
+                {t('word_unverifiedNotice')}
               </Text>
             ) : null}
 
@@ -239,7 +255,7 @@ export default function WordDetailPage() {
                 <Group gap={4} wrap="nowrap">
                   <Volume2 size={14} opacity={0.6} />
                   <Text size="xs" c="dimmed">
-                    Lafal:
+                    {t('word_pronunciationLabel')}
                   </Text>
                 </Group>
                 {word.pronunciations.map((p) => (
@@ -261,7 +277,7 @@ export default function WordDetailPage() {
           {word.notes && (
             <Paper withBorder p="sm" radius="md">
               <Text size="xs" c="dimmed" fs="italic">
-                Catatan etimologi/konteks: {word.notes}
+                {t('word_notesLabel')} {word.notes}
               </Text>
             </Paper>
           )}
@@ -279,7 +295,7 @@ export default function WordDetailPage() {
           <Group gap="xs">
             <BookOpen size={16} />
             <Title order={2} size="h5" c="dimmed" tt="uppercase" fw={700}>
-              Makna &amp; Definisi ({word.meanings.length})
+              {t('word_meaningsHeading', { count: word.meanings.length })}
             </Title>
           </Group>
 
@@ -310,7 +326,7 @@ export default function WordDetailPage() {
                   {meaning.translations.length > 0 && (
                     <Stack gap={4} pl={30}>
                       <Text size="xs" c="dimmed" tt="uppercase" fw={600}>
-                        Terjemahan Indonesia:
+                        {t('word_translationsLabel')}
                       </Text>
                       <Group gap="xs">
                         {meaning.translations.map((t, idx) => (
@@ -326,7 +342,7 @@ export default function WordDetailPage() {
                   {meaning.examples.length > 0 && (
                     <Stack gap="sm" pl={30} pt="xs">
                       <Text size="xs" c="dimmed" tt="uppercase" fw={600}>
-                        Contoh Penggunaan:
+                        {t('word_examplesLabel')}
                       </Text>
                       {meaning.examples.map((ex) => (
                         <Stack key={ex.id} gap={2}>
@@ -335,7 +351,7 @@ export default function WordDetailPage() {
                           </Blockquote>
                           {ex.target_sentence && (
                             <Text size="xs" c="dimmed" pl="md">
-                              Artinya: &quot;{ex.target_sentence}&quot;
+                              {t('word_exampleMeans')} &quot;{ex.target_sentence}&quot;
                             </Text>
                           )}
                           {(ex.audios ?? []).length > 0 && (
@@ -362,7 +378,7 @@ export default function WordDetailPage() {
             <Group gap="xs">
               <Sparkles size={16} />
               <Title order={2} size="h5" c="dimmed" tt="uppercase" fw={700}>
-                Kata Terkait &amp; Sinonim
+                {t('word_relatedTitle')}
               </Title>
             </Group>
             <Group gap="xs">
@@ -415,13 +431,15 @@ export default function WordDetailPage() {
             word.created_by.username === word.verified_by.username ? (
               <Group gap={6} wrap="wrap">
                 <Text size="xs" c="dimmed">
-                  Dibuat dan diverifikasi oleh {word.created_by.username}
+                  {t('word_createdVerifiedBy', {
+                    username: word.created_by.username,
+                  })}
                 </Text>
                 {['admin', 'editor', 'root', 'reviewer'].includes(
                   word.verified_by.role,
                 ) ? (
                   <Badge size="xs" variant="light">
-                    Verifikator
+                    {t('word_verifierBadge')}
                   </Badge>
                 ) : null}
               </Group>
@@ -429,12 +447,16 @@ export default function WordDetailPage() {
               <>
                 {word.created_by?.username ? (
                   <Text size="xs" c="dimmed">
-                    Dibuat oleh {word.created_by.username}
+                    {t('word_createdBy', {
+                      username: word.created_by.username,
+                    })}
                   </Text>
                 ) : null}
                 {word.is_verified && word.verified_by?.username ? (
                   <Text size="xs" c="dimmed">
-                    Diverifikasi oleh {word.verified_by.username}
+                    {t('word_verifiedBy', {
+                      username: word.verified_by.username,
+                    })}
                   </Text>
                 ) : null}
               </>
