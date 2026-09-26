@@ -85,7 +85,7 @@ export default function Home() {
         </Stack>
 
         {wordOfDay.word && (
-          <Stack gap="xs">
+          <Stack gap="xs" className="wotd-section">
             <Title order={2} size="h5" c="dimmed" tt="uppercase" fw={600}>
               {t('home_wotdHeading')}
             </Title>

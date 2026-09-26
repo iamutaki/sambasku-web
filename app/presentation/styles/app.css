@@ -234,3 +234,39 @@ body {
 :root[data-mantine-color-scheme='dark'] .whatsapp-group-qr-frame img {
   filter: invert(1);
 }
+
+/* Paksamku: di belakang kartu, kepala menjulur di atas (desktop saja) */
+.wotd-section {
+  overflow: visible;
+}
+
+.wotd-card-wrap {
+  position: relative;
+  overflow: visible;
+  isolation: isolate;
+}
+
+.wotd-mascot {
+  position: absolute;
+  bottom: 0.15rem;
+  inset-inline-end: 0;
+  height: 30rem;
+  width: auto !important;
+  max-width: none;
+  z-index: 0;
+  pointer-events: none;
+  user-select: none;
+}
+
+.wotd-card {
+  position: relative;
+  z-index: 1;
+  overflow: visible;
+}
+
+/* Sembunyikan di mobile / tablet (< Mantine md = 62em) */
+@media (max-width: 62em) {
+  .wotd-mascot {
+    display: none;
+  }
+}
