@@ -70,19 +70,16 @@ const NEGATIVE_TTL_S = 60;
 /// Sitemap jauh lebih mahal daripada satu halaman HTML (satu subrequest API per
 /// halaman kata), dan isinya berubah lambat. Jendela segarnya sehari, bukan 60
 /// detik, supaya crawler tidak memicu pembangunan ulang terus-menerus.
+///
+/// Hanya `/sitemap.xml` yang berisi urlset. `/sitemap-static.xml` dan
+/// `/sitemap-words/:letter` adalah redirect 301 ke index (lokasi lama) - jangan
+/// tandai cacheable (BH-08: path redirect tidak boleh lookup cache).
 export const SITEMAP_PATH = '/sitemap.xml';
-const SITEMAP_STATIC_PATH = '/sitemap-static.xml';
-const SITEMAP_WORDS_RE = /^\/sitemap-words\/[a-z]$/;
 const SITEMAP_FRESH_S = 86400;
 
-/// Struktur sitemap index: index + anak statis + anak per huruf.
+/// Struktur sitemap: hanya index kanonik yang di-cache.
 export function isSitemapPath(pathname: string): boolean {
-  const canonical = canonicalCachePath(pathname);
-  return (
-    canonical === SITEMAP_PATH ||
-    canonical === SITEMAP_STATIC_PATH ||
-    SITEMAP_WORDS_RE.test(canonical)
-  );
+  return canonicalCachePath(pathname) === SITEMAP_PATH;
 }
 
 /// RSS dibangun dari satu subrequest API dan dibaca ulang pembaca feed tiap
