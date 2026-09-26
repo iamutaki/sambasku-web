@@ -21,8 +21,8 @@ type LegalDoc = {
 
 export async function loader() {
   try {
-    const doc = await apiClient<LegalDoc>('/legal/documents/terms');
-    return { doc, error: null as string | null };
+    const res = await apiClient<LegalDoc>('/legal/documents/terms');
+    return { doc: res.data, error: null as string | null };
   } catch {
     return { doc: null as LegalDoc | null, error: 'Dokumen belum tersedia' };
   }
