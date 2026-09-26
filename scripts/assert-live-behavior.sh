@@ -141,8 +141,12 @@ MISSING="pentest-negative-cache-canary-$$"
 assert_xcache "/id/words/$MISSING" "miss" "404 pertama tidak di-cache"
 assert_xcache "/id/words/$MISSING" "hit" "negative cache 404 kata tidak berfungsi (G-02)"
 
-# --- sitemap: harus 200 dan punya header cache -------------------------------
+# --- sitemap: index 200 + cache; lokasi lama 301 bypass -----------------------
 if check_sitemap; then
+  # Isi kanonik: satu urlset. Request pertama mengisi; kedua wajib hit.
+  # Jangan GET status dulu - itu menghangatkan cache dan merusak assert miss.
+  assert_xcache "/sitemap.xml" "miss" "request pertama mengisi sitemap index"
+  assert_xcache "/sitemap.xml" "hit" "cache sitemap index tidak berfungsi"
   SITEMAP_STATUS="$(get_status "/sitemap.xml")"
   if [ "$SITEMAP_STATUS" != "200" ]; then
     fail "/sitemap.xml: status $SITEMAP_STATUS, diharapkan 200"
@@ -150,47 +154,66 @@ if check_sitemap; then
     echo "ok   /sitemap.xml -> 200"
   fi
 
-  # Anak-anak sitemap index: 200 + benar-benar ter-cache di edge.
+  # Lokasi lama: redirect ke index, tidak di-cache (BH-08).
   for CHILD in "/sitemap-static.xml" "/sitemap-words/a"; do
     CHILD_STATUS="$(get_status "$CHILD")"
-    if [ "$CHILD_STATUS" != "200" ]; then
-      fail "$CHILD: status $CHILD_STATUS, diharapkan 200"
+    if [ "$CHILD_STATUS" != "301" ]; then
+      fail "$CHILD: status $CHILD_STATUS, diharapkan 301 (redirect ke /sitemap.xml)"
     else
-      echo "ok   $CHILD -> 200"
+      echo "ok   $CHILD -> 301"
     fi
+    CHILD_LOC="$(get_headers "$CHILD" | tr -d '\r' | awk 'tolower($1) == "location:" { print $2 }' | tail -1)"
+    case "$CHILD_LOC" in
+      */sitemap.xml)
+        echo "ok   $CHILD -> Location …/sitemap.xml"
+        ;;
+      *)
+        fail "$CHILD: Location '$CHILD_LOC', diharapkan …/sitemap.xml"
+        ;;
+    esac
+    assert_xcache "$CHILD" "bypass" "redirect lokasi lama sitemap tidak boleh lookup cache (BH-08)"
   done
-  assert_xcache "/sitemap-static.xml" "miss" "request pertama mengisi anak statis"
-  assert_xcache "/sitemap-static.xml" "hit" "cache anak statis tidak berfungsi"
-  assert_xcache "/sitemap-words/a" "miss" "request pertama mengisi anak huruf"
-  assert_xcache "/sitemap-words/a" "hit" "cache anak huruf tidak berfungsi"
   # Varian liar bukan sitemap dan tidak boleh menyentuh cache.
   assert_xcache "/sitemap-words/aa" "bypass" "path sitemap invalid tidak di-cache"
 
   # RSS feed publik: 200, content-type benar, dan ter-cache di edge.
+  # Urutan: miss→hit dulu (jangan warm), baru cek status/content-type.
+  assert_xcache "/rss.xml" "miss" "request pertama mengisi feed"
+  assert_xcache "/rss.xml" "hit" "cache feed tidak berfungsi"
   RSS_STATUS="$(get_status "/rss.xml")"
   if [ "$RSS_STATUS" != "200" ]; then
     fail "/rss.xml: status $RSS_STATUS, diharapkan 200"
   else
     echo "ok   /rss.xml -> 200"
   fi
-  RSS_CT="$(get_headers "/rss.xml" | tr -d '\r' | awk 'tolower($1) == "content-type:" { print $2 }' | tail -1)"
+  # Content-Type boleh membawa charset; bandingkan media type saja
+  # (hindari awk $2 = "application/rss+xml;" karena semicolon menempel).
+  RSS_CT="$(get_headers "/rss.xml" | tr -d '\r' | awk 'BEGIN{IGNORECASE=1} /^content-type:/ {
+    sub(/^content-type:[[:space:]]*/, "", $0)
+    sub(/;.*/, "", $0)
+    gsub(/[[:space:]]/, "", $0)
+    print $0
+  }' | tail -1)"
   if [ "$RSS_CT" = "application/rss+xml" ]; then
     echo "ok   /rss.xml -> content-type rss"
   else
     fail "/rss.xml: content-type '$RSS_CT', diharapkan application/rss+xml"
   fi
-  assert_xcache "/rss.xml" "miss" "request pertama mengisi feed"
-  assert_xcache "/rss.xml" "hit" "cache feed tidak berfungsi"
 
-  # Kartu OG per kata: 200 PNG + ter-cache (render resvg mahal).
-  OG_CT="$(get_headers "/og/words/$LEMMA" | tr -d '\r' | awk 'tolower($1) == "content-type:" { print $2 }' | tail -1)"
+  # Kartu OG per kata: miss→hit dulu, baru cek content-type (jangan warm).
+  assert_xcache "/og/words/$LEMMA" "miss" "render pertama kartu OG"
+  assert_xcache "/og/words/$LEMMA" "hit" "cache kartu OG tidak berfungsi"
+  OG_CT="$(get_headers "/og/words/$LEMMA" | tr -d '\r' | awk 'BEGIN{IGNORECASE=1} /^content-type:/ {
+    sub(/^content-type:[[:space:]]*/, "", $0)
+    sub(/;.*/, "", $0)
+    gsub(/[[:space:]]/, "", $0)
+    print $0
+  }' | tail -1)"
   if [ "$OG_CT" = "image/png" ]; then
     echo "ok   /og/words/$LEMMA -> content-type png"
   else
     fail "/og/words/$LEMMA: content-type '$OG_CT', diharapkan image/png"
   fi
-  assert_xcache "/og/words/$LEMMA" "miss" "render pertama kartu OG"
-  assert_xcache "/og/words/$LEMMA" "hit" "cache kartu OG tidak berfungsi"
 else
   echo "skip /sitemap.xml (hanya aktif di profil prod)"
 fi

@@ -47,7 +47,7 @@ export function Header() {
             <Logo h={40} eager />
           </Anchor>
 
-          <Group gap={4} visibleFrom="xs">
+          <Group gap={4} visibleFrom="md">
             {navItems.map((item) => (
               <Anchor
                 key={item.bare}
@@ -77,7 +77,7 @@ export function Header() {
             target="_blank"
             rel="noopener noreferrer"
             underline="never"
-            visibleFrom="xs"
+            visibleFrom="md"
             aria-label={t('common_getAppAria')}
           >
             <Image
@@ -90,7 +90,7 @@ export function Header() {
             />
           </Anchor>
           <ThemeToggle />
-          <Box hiddenFrom="xs">
+          <Box hiddenFrom="md">
             <Burger
               opened={menuOpened}
               onClick={() => setMenuOpened((v) => !v)}

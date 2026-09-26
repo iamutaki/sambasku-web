@@ -148,31 +148,26 @@ describe('freshSeconds', () => {
     assert.equal(freshSeconds(`${SITEMAP_PATH}/`), freshSeconds(SITEMAP_PATH));
   });
 
-  it('semua anak sitemap index ikut jendela segar panjang', () => {
-    assert.equal(freshSeconds('/sitemap-static.xml'), freshSeconds(SITEMAP_PATH));
-    assert.equal(freshSeconds('/sitemap-words/k'), freshSeconds(SITEMAP_PATH));
-    // Varian liar bukan sitemap dan tidak boleh ikut istilah panjang.
-    assert.equal(freshSeconds('/sitemap-words/kk'), freshSeconds('/id/words/capal'));
-    assert.equal(freshSeconds('/sitemap-words/1'), freshSeconds('/id/words/capal'));
+  it('lokasi lama sitemap (redirect) tidak ikut jendela segar panjang', () => {
+    assert.equal(freshSeconds('/sitemap-static.xml'), freshSeconds('/id/words/capal'));
+    assert.equal(freshSeconds('/sitemap-words/k'), freshSeconds('/id/words/capal'));
   });
 });
 
 describe('isSitemapPath', () => {
-  it('menerima index, anak statis, dan anak huruf; menolak varian liar', () => {
+  it('hanya index kanonik; lokasi lama dan varian liar ditolak', () => {
     assert.equal(isSitemapPath('/sitemap.xml'), true);
-    assert.equal(isSitemapPath('/sitemap-static.xml'), true);
-    assert.equal(isSitemapPath('/sitemap-words/a'), true);
-    assert.equal(isSitemapPath('/sitemap-words/z'), true);
+    assert.equal(isSitemapPath('/sitemap.xml/'), true);
+    assert.equal(isSitemapPath('/sitemap-static.xml'), false);
+    assert.equal(isSitemapPath('/sitemap-words/a'), false);
+    assert.equal(isSitemapPath('/sitemap-words/z'), false);
     assert.equal(isSitemapPath('/sitemap-words/aa'), false);
-    assert.equal(isSitemapPath('/sitemap-words/1'), false);
-    assert.equal(isSitemapPath('/sitemap-words/a.xml'), false);
-    // Trailing slash di-kanonikalisasi ke path yang sama (berbagi entry).
-    assert.equal(isSitemapPath('/sitemap-words/a/'), true);
   });
 
-  it('anak sitemap cacheable sebagai request', () => {
-    assert.equal(isCacheableRequest('GET', '/sitemap-static.xml'), true);
-    assert.equal(isCacheableRequest('GET', '/sitemap-words/k'), true);
+  it('lokasi lama sitemap tidak cacheable (redirect 301 → bypass)', () => {
+    assert.equal(isCacheableRequest('GET', '/sitemap.xml'), true);
+    assert.equal(isCacheableRequest('GET', '/sitemap-static.xml'), false);
+    assert.equal(isCacheableRequest('GET', '/sitemap-words/k'), false);
     assert.equal(isCacheableRequest('GET', '/sitemap-words/kk'), false);
   });
 });

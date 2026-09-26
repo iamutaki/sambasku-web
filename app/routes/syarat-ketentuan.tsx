@@ -1,6 +1,6 @@
 import { Link, useLoaderData } from 'react-router';
 import { Anchor, Container, Stack, Text, Title } from '@mantine/core';
-import type { Route } from './+types/privacy-policy';
+import type { Route } from './+types/syarat-ketentuan';
 import { apiClient } from '@/infrastructure/api/api-client';
 import { buildMetaTags } from '@/application/utils/seo';
 import {
@@ -21,7 +21,7 @@ type LegalDoc = {
 
 export async function loader() {
   try {
-    const res = await apiClient<LegalDoc>('/legal/documents/privacy');
+    const res = await apiClient<LegalDoc>('/legal/documents/terms');
     return { doc: res.data, error: null as string | null };
   } catch {
     return { doc: null as LegalDoc | null, error: 'Dokumen belum tersedia' };
@@ -31,10 +31,10 @@ export async function loader() {
 export function meta({ params }: Route.MetaArgs) {
   const locale = isAppLocale(params.locale) ? params.locale : DEFAULT_LOCALE;
   return buildMetaTags({
-    title: 'Kebijakan Privasi',
+    title: 'Syarat dan Ketentuan',
     description:
-      'Kebijakan Privasi SambasKu: data akun, kontribusi, notifikasi, dan layanan pihak ketiga.',
-    path: localePath(locale, '/privacy-policy'),
+      'Syarat dan Ketentuan SambasKu: data akun, kontribusi, notifikasi, dan layanan pihak ketiga.',
+    path: localePath(locale, '/syarat-ketentuan'),
     locale,
   });
 }
@@ -81,7 +81,7 @@ function MarkdownBlocks({ markdown }: { markdown: string }) {
   );
 }
 
-export default function PrivacyPolicyPage() {
+export default function TermsPage() {
   const lp = useLocalePath();
   const { doc, error } = useLoaderData<typeof loader>();
 
@@ -103,8 +103,8 @@ export default function PrivacyPolicyPage() {
         )}
 
         <Text size="sm" c="dimmed">
-          <Anchor component={Link} to={lp('/syarat-ketentuan')}>
-            Syarat Ketentuan
+          <Anchor component={Link} to={lp('/privacy-policy')}>
+            Kebijakan Privasi
           </Anchor>
           {' · '}
           <Anchor component={Link} to={lp('/hapus-akun')}>
