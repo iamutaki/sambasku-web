@@ -1,9 +1,13 @@
 /**
  * Konten halaman dokumentasi API publik (baca kamus).
- * Base URL produksi: https://api.sambasku.com/api/v1
+ * Contoh curl memakai host produksi supaya bisa disalin apa adanya.
  */
 
 export const API_PUBLIK_BASE = 'https://api.sambasku.com/api/v1';
+
+export const API_PUBLIK_DOCS_URL = 'https://api.sambasku.com/docs';
+
+export const API_PUBLIK_OPENAPI_URL = 'https://api.sambasku.com/openapi.json';
 
 export const API_PUBLIK_INTRO = [
   'API publik SambasKu untuk membaca kamus Melayu Sambas. Tanpa login. Respons memakai envelope JSON standar: success, data, dan meta (pagination bila ada).',
@@ -15,6 +19,7 @@ export const API_PUBLIK_ATTRIBUTION =
   'Konten kata (lemma, makna, terjemahan, contoh) bebas dikutip dengan tautan ke halaman katanya di https://sambasku.com. Cantumkan sumber bila data dipakai ulang di produk atau dataset.';
 
 export const API_PUBLIK_TOC: Array<{ id: string; label: string }> = [
+  { id: 'konvensi', label: 'Konvensi' },
   { id: 'search', label: 'Cari kata' },
   { id: 'lemma', label: 'Detail by lemma' },
   { id: 'list', label: 'Daftar A-Z' },
@@ -48,9 +53,15 @@ export const API_PUBLIK_PRIMARY: ApiPublikEndpoint[] = [
     summary:
       'Pencarian kosakata. Arah default Sambas ke Indonesia (lemma). Pakai search_in=translation untuk Indonesia ke Sambas.',
     params: [
-      { name: 'q', detail: 'Kata kunci (trim, maks 255). Kosong = daftar kosong / tanpa hasil bermakna.' },
+      {
+        name: 'q',
+        detail: 'Kata kunci (trim, maks 255). Kosong = daftar kosong / tanpa hasil bermakna.',
+      },
       { name: 'limit', detail: '1-100, default 20.' },
-      { name: 'cursor', detail: 'Cursor opaque ULID dari meta.next_cursor halaman sebelumnya.' },
+      {
+        name: 'cursor',
+        detail: 'Cursor opaque ULID dari meta.next_cursor halaman sebelumnya.',
+      },
       {
         name: 'search_in',
         detail: 'lemma (default) atau translation.',
@@ -77,7 +88,7 @@ export const API_PUBLIK_PRIMARY: ApiPublikEndpoint[] = [
   "success": true,
   "data": [
     {
-      "id": "01JDWORD…",
+      "id": "01JDWORDMAKATN000000000000",
       "lemma": "cawan",
       "word_type": "word",
       "status": "published",
@@ -120,20 +131,25 @@ export const API_PUBLIK_PRIMARY: ApiPublikEndpoint[] = [
     sampleJson: `{
   "success": true,
   "data": {
-    "id": "01JDWORD…",
+    "id": "01JDWORDMAKATN000000000000",
     "lemma": "cawan",
     "word_type": "word",
     "status": "published",
     "is_verified": true,
     "meanings": [
       {
-        "definition": "tempat untuk minum…",
+        "definition": "tempat untuk minum",
         "translations": [
-          { "translation_text": "gelas", "translation_type": "direct" }
+          {
+            "translation_text": "gelas",
+            "translation_type": "direct"
+          }
         ],
         "examples": []
       }
-    ]
+    ],
+    "pronunciations": [],
+    "images": []
   }
 }`,
   },
@@ -148,18 +164,39 @@ export const API_PUBLIK_SECONDARY: ApiPublikEndpoint[] = [
     path: '/words',
     summary:
       'Browsing korpus urut lemma. Filter letter (satu huruf A-Z), q (contains), is_verified=true untuk lemma yang boleh diindeks sitemap, cursor komposit opaque (beda bentuk dari /search).',
+    params: [
+      { name: 'limit', detail: '1-100, default 20.' },
+      { name: 'cursor', detail: 'Cursor opaque dari meta.next_cursor.' },
+      { name: 'letter', detail: 'Opsional: satu huruf a-z.' },
+      { name: 'q', detail: 'Opsional: filter contains pada lemma.' },
+      {
+        name: 'is_verified',
+        detail: 'Opsional: true | false. Sitemap memakai true.',
+      },
+    ],
+    notes: [
+      'Field updated_at dipakai sitemap untuk lastmod yang jujur.',
+      'Cache respons: Cache-Control public, max-age=60, s-maxage=300.',
+    ],
     curls: [`curl -sS '${API_PUBLIK_BASE}/words?is_verified=true&limit=20'`],
     sampleJson: `{
   "success": true,
   "data": [
     {
+      "id": "01JDWORDMAKATN000000000000",
       "lemma": "cawan",
+      "word_type": "word",
+      "status": "published",
       "is_verified": true,
       "updated_at": "2026-09-26T03:00:00.000Z",
       "sense": "[n] gelas"
     }
   ],
-  "meta": { "limit": 20, "next_cursor": "…", "has_more": true }
+  "meta": {
+    "limit": 20,
+    "next_cursor": "…",
+    "has_more": true
+  }
 }`,
   },
   {
@@ -169,8 +206,27 @@ export const API_PUBLIK_SECONDARY: ApiPublikEndpoint[] = [
     path: '/words/:id',
     summary:
       'Sama bentuk respons dengan /words/lemma/:lemma. :id adalah ULID 26 karakter. Berguna untuk backlink lama yang memakai id, bukan lemma.',
-    curls: [`curl -sS '${API_PUBLIK_BASE}/words/01JDWORDMAKATN000000000000'`],
-    sampleJson: `{ "success": true, "data": { "id": "01JDWORD…", "lemma": "…" } }`,
+    params: [
+      {
+        name: 'id',
+        detail: 'ULID 26 karakter (contoh: 01JDWORDMAKATN000000000000).',
+      },
+    ],
+    notes: ['404 bila id tidak ditemukan atau kata tidak published.'],
+    curls: [
+      `curl -sS '${API_PUBLIK_BASE}/words/01JDWORDMAKATN000000000000'`,
+    ],
+    sampleJson: `{
+  "success": true,
+  "data": {
+    "id": "01JDWORDMAKATN000000000000",
+    "lemma": "cawan",
+    "word_type": "word",
+    "status": "published",
+    "is_verified": true,
+    "meanings": []
+  }
+}`,
   },
 ];
 

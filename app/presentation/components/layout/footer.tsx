@@ -10,77 +10,67 @@ export function Footer() {
   const { t } = useTranslation();
   const lp = useLocalePath();
 
-  return (
-    <Container size="md" py="md">
-      <Group justify="space-between" gap="md">
-        <Group gap="xs" justify="center">
-          <Logo h={28} />
-          <Text size="sm" c="dimmed">
-            {t('common_tagline')}
-          </Text>
-        </Group>
+  const links = [
+    { to: lp('/words'), label: t('nav_words') },
+    { to: lp('/kontribusi'), label: t('nav_contribute') },
+    { to: lp('/bantuan-terjemahan'), label: t('nav_ask') },
+    { to: lp('/faq'), label: t('nav_faq') },
+    { to: lp('/api-publik'), label: t('nav_apiPublik') },
+    { to: lp('/privacy-policy'), label: t('nav_privacy') },
+  ] as const;
 
-        <Group gap="lg" justify="center">
-          <Anchor
-            component={Link}
-            to={lp('/words')}
-            size="xs"
-            c="dimmed"
-            py={4}
-          >
-            {t('nav_words')}
-          </Anchor>
-          <Anchor component={Link} to={lp('/faq')} size="xs" c="dimmed" py={4}>
-            {t('nav_faq')}
-          </Anchor>
-          <Anchor
-            component={Link}
-            to={lp('/api-publik')}
-            size="xs"
-            c="dimmed"
-            py={4}
-          >
-            {t('nav_apiPublik')}
-          </Anchor>
-          <Anchor
-            component={Link}
-            to={lp('/privacy-policy')}
-            size="xs"
-            c="dimmed"
-            py={4}
-          >
-            {t('nav_privacy')}
-          </Anchor>
-          <Anchor
-            component={Link}
-            to={lp('/search')}
-            size="xs"
-            c="dimmed"
-            py={4}
-          >
-            {t('nav_searchFull')}
-          </Anchor>
+  return (
+    <Container size="md" py="md" component="footer">
+      <Stack gap="sm" align="center">
+        <Anchor
+          component={Link}
+          to={lp('/')}
+          underline="never"
+          aria-label={t('nav_homeAria')}
+        >
+          <Group gap="xs" justify="center">
+            <Logo h={28} />
+            <Text size="sm" c="dimmed" visibleFrom="xs">
+              {t('common_tagline')}
+            </Text>
+          </Group>
+        </Anchor>
+
+        <Group gap="md" justify="center">
+          {links.map((link) => (
+            <Anchor
+              key={link.to}
+              component={Link}
+              to={link.to}
+              size="xs"
+              c="dimmed"
+              py={4}
+            >
+              {link.label}
+            </Anchor>
+          ))}
           <Anchor
             href="https://github.com/sambasku"
             target="_blank"
             rel="noopener noreferrer"
             size="xs"
             c="dimmed"
+            py={4}
           >
             <Group gap={4} wrap="nowrap">
-              <ExternalLink size={13} />
+              <ExternalLink size={13} aria-hidden />
               {t('nav_github')}
             </Group>
           </Anchor>
           {/* Feed publik tanpa prefix locale (data kamus identik antar locale). */}
           <Anchor href="/rss.xml" size="xs" c="dimmed" py={4}>
             <Group gap={4} wrap="nowrap">
-              <Rss size={13} />
+              <Rss size={13} aria-hidden />
               {t('nav_rss')}
             </Group>
           </Anchor>
         </Group>
-      </Group>
+      </Stack>
 
       <Divider my="sm" />
 
@@ -92,7 +82,7 @@ export function Footer() {
             {t('common_deleteAccount')}
           </Anchor>
         </Text>
-        <Group gap={4} wrap="nowrap">
+        <Group gap={4} wrap="nowrap" justify="center">
           <Text size="xs" c="dimmed">
             {t('common_madeWith')}
           </Text>
@@ -100,6 +90,7 @@ export function Footer() {
             size={12}
             color="var(--mantine-color-red-5)"
             fill="var(--mantine-color-red-5)"
+            aria-hidden
           />
           <Text size="xs" c="dimmed">
             {t('common_forLanguagePreservation')}
