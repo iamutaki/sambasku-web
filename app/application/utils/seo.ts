@@ -178,14 +178,9 @@ export function buildHomeJsonLd(localeInput?: string) {
         description: t('seo_homeDescription'),
         inLanguage: locale,
         publisher: { '@id': organizationId },
-        potentialAction: {
-          '@type': 'SearchAction',
-          target: {
-            '@type': 'EntryPoint',
-            urlTemplate: `${env.appUrl}${localePath(locale, '/search')}?q={search_term_string}`,
-          },
-          'query-input': 'required name=search_term_string',
-        },
+        // Tanpa SearchAction: /search selalu noindex (thin content), jadi
+        // menunjuknya dari beranda hanya memberi sinyal ke URL yang tidak
+        // boleh diindeks.
       },
       {
         '@type': 'Organization',
@@ -393,5 +388,34 @@ export function buildWordJsonLd(word: WordDetail, localeInput?: string) {
   return {
     '@context': 'https://schema.org',
     '@graph': [definedTerm, breadcrumb],
+  };
+}
+
+/** JSON-LD halaman dokumentasi API publik. */
+export function buildApiPublikJsonLd(localeInput?: string) {
+  const locale = resolveLocale(localeInput);
+  const t = getFixedT(locale);
+  const pageUrl = `${env.appUrl}${localePath(locale, '/api-publik')}`;
+
+  return {
+    '@context': 'https://schema.org',
+    '@type': 'TechArticle',
+    '@id': `${pageUrl}#article`,
+    headline: t('seo_apiPublikTitle'),
+    description: t('seo_apiPublikDescription'),
+    url: pageUrl,
+    inLanguage: locale,
+    about: {
+      '@type': 'WebAPI',
+      name: 'SambasKu Words API',
+      description: t('seo_apiPublikDescription'),
+      documentation: pageUrl,
+      url: 'https://api.sambasku.com/api/v1',
+    },
+    isPartOf: {
+      '@type': 'WebSite',
+      name: t('seo_websiteName'),
+      url: `${env.appUrl}${localePath(locale, '/')}`,
+    },
   };
 }
